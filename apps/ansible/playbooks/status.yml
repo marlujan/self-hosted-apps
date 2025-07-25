@@ -1,0 +1,28 @@
+---
+- name: Check Application Status
+  hosts: docker_apps
+  become: yes
+  gather_facts: no
+  
+  tasks:
+    - name: Find all app configuration files
+      find:
+        paths: "../apps_config"
+        patterns: "*.yml"
+        excludes: "example-*.yml"
+      delegate_to: localhost
+      register: app_configs
+
+    - name: Check status of each application
+      include_tasks: check_single_app.yml
+      vars:
+        app_name: "{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+        app_config_file: "{{ item.path }}"
+      loop: "{{ app_configs.files }}"
+
+    - name: Display summary
+      debug:
+        msg:
+          - "📊 Application Status Summary"
+          - "Total applications: {{ app_configs.files | length }}"
+          - "Check individual results above"

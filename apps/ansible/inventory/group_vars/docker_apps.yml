@@ -1,0 +1,19 @@
+# Docker app specific configuration
+# Port allocation tracking to prevent conflicts
+allocated_ports:
+  readeck: 8000
+  # Add new apps here with unique ports
+  # nextapp: 8001
+  # anotherapp: 8002
+
+# Default app configuration
+app_defaults:
+  auto_start: true
+  ssl_enabled: true
+  nginx_config:
+    client_max_body_size: 100M
+    additional_headers: []
+  healthcheck_enabled: true
+
+# Nginx configuration
+nginx_reload_command: "systemctl reload nginx"

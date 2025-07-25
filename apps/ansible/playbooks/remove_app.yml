@@ -1,0 +1,82 @@
+---
+- name: Remove Docker Application
+  hosts: docker_apps
+  become: yes
+  vars_files:
+    - "../apps_config/{{ app_name }}.yml"
+  
+  pre_tasks:
+    - name: Validate app_name parameter
+      assert:
+        that:
+          - app_name is defined
+          - app_name != ""
+        fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
+
+    - name: Confirm removal
+      pause:
+        prompt: "⚠️  This will permanently remove {{ app_name }} and all its data. Type 'yes' to continue"
+      register: confirm_removal
+
+    - name: Abort if not confirmed
+      fail:
+        msg: "Removal aborted"
+      when: confirm_removal.user_input != "yes"
+
+    - name: Display removal info
+      debug:
+        msg:
+          - "Removing application: {{ app_name }}"
+          - "Domain: {{ domain_name }}"
+          - "Directory: {{ app_directory }}"
+
+  tasks:
+    - name: Stop and remove Docker containers
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        state: absent
+        remove_volumes: yes
+      become_user: ec2-user
+      ignore_errors: yes
+
+    - name: Remove Docker images
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        state: absent
+      become_user: ec2-user
+      ignore_errors: yes
+
+    - name: Remove app directory
+      file:
+        path: "{{ app_directory }}"
+        state: absent
+
+    - name: Remove Nginx configuration
+      file:
+        path: "/etc/nginx/conf.d/{{ app_name }}.conf"
+        state: absent
+      notify: reload nginx
+
+    - name: Remove SSL certificate
+      command: certbot delete --cert-name {{ domain_name }} --non-interactive
+      register: cert_removal
+      failed_when: cert_removal.rc != 0 and "No certificate found" not in cert_removal.stderr
+      when: ssl_enabled | default(true)
+
+    - name: Test and reload Nginx
+      command: nginx -t
+      notify: reload nginx
+
+  handlers:
+    - name: reload nginx
+      systemctl:
+        name: nginx
+        state: reloaded
+
+  post_tasks:
+    - name: Display removal status
+      debug:
+        msg: 
+          - "✅ {{ app_name }} has been completely removed!"
+          - "🌐 Domain {{ domain_name }} is no longer served"
+          - "ℹ️  You may want to update your DNS records"

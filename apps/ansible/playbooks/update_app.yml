@@ -1,0 +1,67 @@
+---
+- name: Update Single Docker Application
+  hosts: docker_apps
+  become: yes
+  vars_files:
+    - "../apps_config/{{ app_name }}.yml"
+  
+  pre_tasks:
+    - name: Validate app_name parameter
+      assert:
+        that:
+          - app_name is defined
+          - app_name != ""
+        fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
+
+    - name: Display update info
+      debug:
+        msg:
+          - "Updating application: {{ app_name }}"
+          - "Current image: {{ docker_image }}"
+
+  tasks:
+    - name: Pull latest Docker image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+      become_user: ec2-user
+
+    - name: Update docker-compose configuration
+      template:
+        src: "../roles/docker_app/templates/docker-compose.yml.j2"
+        dest: "{{ app_directory }}/docker-compose.yml"
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
+
+    - name: Recreate container with latest image
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        state: present
+        pull: yes
+        recreate: always
+      become_user: ec2-user
+
+    - name: Wait for container to be ready
+      wait_for:
+        port: "{{ container_port }}"
+        host: localhost
+        delay: 5
+        timeout: 60
+
+    - name: Verify application health after update
+      uri:
+        url: "http://localhost:{{ container_port }}"
+        method: GET
+        timeout: 10
+      register: health_check
+      retries: 3
+      delay: 5
+
+    - name: Display update status
+      debug:
+        msg: 
+          - "✅ {{ app_name }} update completed!"
+          - "🌐 Available at: https://{{ domain_name }}"
+          - "🐳 Container health: {{ 'Healthy' if health_check.status == 200 else 'Check required' }}"

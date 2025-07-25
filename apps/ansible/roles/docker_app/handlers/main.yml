@@ -1,0 +1,6 @@
+---
+- name: restart app container
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    restarted: yes
+  become_user: ec2-user

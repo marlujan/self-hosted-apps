@@ -1,0 +1,56 @@
+---
+- name: Deploy All Docker Applications
+  hosts: localhost
+  gather_facts: no
+  vars:
+    apps_config_path: "../apps_config"
+  
+  tasks:
+    - name: Find all app configuration files
+      find:
+        paths: "{{ apps_config_path }}"
+        patterns: "*.yml"
+        excludes: "example-*.yml"
+      register: app_configs
+
+    - name: Display found applications
+      debug:
+        msg: "Found {{ app_configs.files | length }} applications to deploy"
+
+    - name: List applications
+      debug:
+        msg: "{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+      loop: "{{ app_configs.files }}"
+
+    - name: Confirm deployment
+      pause:
+        prompt: "Deploy all {{ app_configs.files | length }} applications? Press Enter to continue, Ctrl+C to abort"
+
+- name: Deploy Each Application
+  hosts: docker_apps
+  become: yes
+  serial: 1  # Deploy one app at a time to avoid conflicts
+  
+  tasks:
+    - name: Find all app configuration files
+      find:
+        paths: "../apps_config"
+        patterns: "*.yml"
+        excludes: "example-*.yml"
+      delegate_to: localhost
+      register: app_configs
+      run_once: yes
+
+    - name: Deploy each application
+      include_tasks: deploy_single_app.yml
+      vars:
+        app_config_file: "{{ item.path }}"
+        app_name: "{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+      loop: "{{ app_configs.files }}"
+
+    - name: Display final deployment summary
+      debug:
+        msg:
+          - "🎉 All applications deployed successfully!"
+          - "Total applications: {{ app_configs.files | length }}"
+      run_once: yes

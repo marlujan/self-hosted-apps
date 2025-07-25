@@ -1,0 +1,7 @@
+- name: Configure Multi-App Docker Server
+  hosts: app_server
+  roles:
+    - common
+    - docker
+    - nginx
+    - certbot

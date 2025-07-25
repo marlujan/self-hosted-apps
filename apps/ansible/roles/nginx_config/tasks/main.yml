@@ -1,0 +1,36 @@
+---
+- name: Validate nginx configuration variables
+  assert:
+    that:
+      - app_name is defined and app_name != ""
+      - domain_name is defined and domain_name != ""
+      - container_port is defined
+    fail_msg: "Required nginx configuration variables are missing"
+
+- name: Deploy app-specific Nginx configuration
+  template:
+    src: app.conf.j2
+    dest: "/etc/nginx/conf.d/{{ app_name }}.conf"
+    backup: yes
+  notify: reload nginx
+
+- name: Test Nginx configuration
+  command: nginx -t
+  changed_when: false
+  register: nginx_test
+
+- name: Display nginx test results
+  debug:
+    var: nginx_test.stdout_lines
+
+- name: Remove app nginx config on failure
+  file:
+    path: "/etc/nginx/conf.d/{{ app_name }}.conf"
+    state: absent
+  when: nginx_test.rc != 0
+  notify: reload nginx
+
+- name: Fail if nginx test failed
+  fail:
+    msg: "Nginx configuration test failed"
+  when: nginx_test.rc != 0

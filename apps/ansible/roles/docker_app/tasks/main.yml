@@ -1,0 +1,59 @@
+---
+- name: Validate required variables
+  assert:
+    that:
+      - app_name is defined and app_name != ""
+      - docker_image is defined and docker_image != ""
+      - container_port is defined
+      - app_directory is defined
+    fail_msg: "Required app variables are missing"
+
+- name: Create app directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+  loop:
+    - "{{ app_directory }}"
+    - "{{ app_directory }}/data"
+
+- name: Check if port is already allocated
+  fail:
+    msg: "Port {{ container_port }} is already allocated to {{ allocated_ports[item.key] | default('unknown') }}"
+  when: 
+    - allocated_ports is defined
+    - item.key != app_name
+    - item.value == container_port
+  loop: "{{ allocated_ports | dict2items }}"
+
+- name: Deploy docker-compose.yml from template
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ app_directory }}/docker-compose.yml"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0644'
+  notify: restart app container
+
+- name: Pull Docker image
+  community.docker.docker_image:
+    name: "{{ docker_image }}"
+    source: pull
+  become_user: ec2-user
+
+- name: Start Docker container
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    state: "{{ 'present' if (auto_start | default(true)) else 'absent' }}"
+    pull: yes
+  become_user: ec2-user
+
+- name: Wait for container to be healthy
+  wait_for:
+    port: "{{ container_port }}"
+    host: localhost
+    delay: 5
+    timeout: 60
+  when: auto_start | default(true)

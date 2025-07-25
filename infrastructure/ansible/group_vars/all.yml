@@ -1,0 +1,4 @@
+# Variables used across all Ansible roles - Infrastructure only
+# App-specific domains and configurations are managed by individual apps
+user_email: marlujan.hj+dev1@gmail.com
+apps_directory: /home/ec2-user/apps

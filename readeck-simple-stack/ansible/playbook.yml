@@ -1,8 +1,0 @@
-- name: Configure Readeck Server
-  hosts: readeck_server
-  roles:
-    - common
-    - docker
-    - readeck
-    - nginx
-    - certbot

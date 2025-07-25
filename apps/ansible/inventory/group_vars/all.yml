@@ -1,0 +1,13 @@
+# Global configuration for all app deployments
+apps_base_directory: /home/ec2-user/apps
+default_user_email: marlujan.hj+dev1@gmail.com
+ssl_default_enabled: true
+nginx_default_client_max_body_size: 100M
+
+# Docker settings
+docker_compose_version: '3.8'
+default_restart_policy: unless-stopped
+
+# Infrastructure settings
+stack_name: docker-apps-stack
+aws_region: us-east-1

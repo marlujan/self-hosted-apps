@@ -1,0 +1,48 @@
+server {
+    listen 80;
+    server_name {{ domain_name }};
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    location / {
+        proxy_pass http://localhost:{{ container_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+{% if nginx_config is defined %}
+{% if nginx_config.client_max_body_size is defined %}
+        client_max_body_size {{ nginx_config.client_max_body_size }};
+{% endif %}
+
+{% if nginx_config.proxy_timeout is defined %}
+        proxy_connect_timeout {{ nginx_config.proxy_timeout }};
+        proxy_send_timeout {{ nginx_config.proxy_timeout }};
+        proxy_read_timeout {{ nginx_config.proxy_timeout }};
+{% endif %}
+
+{% if nginx_config.additional_headers is defined and nginx_config.additional_headers | length > 0 %}
+{% for header in nginx_config.additional_headers %}
+        {{ header }};
+{% endfor %}
+{% endif %}
+
+{% if nginx_config.custom_locations is defined %}
+{% for location in nginx_config.custom_locations %}
+    }
+
+    location {{ location.path }} {
+{% for directive in location.directives %}
+        {{ directive }};
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% else %}
+        client_max_body_size {{ nginx_default_client_max_body_size | default('100M') }};
+{% endif %}
+    }
+}

@@ -1,0 +1,38 @@
+---
+# Task file for deploying a single app (used by deploy_all.yml)
+- name: Load app configuration
+  include_vars:
+    file: "{{ app_config_file }}"
+
+- name: Display current app deployment
+  debug:
+    msg:
+      - "Deploying: {{ app_name }}"
+      - "Domain: {{ domain_name }}"
+      - "Port: {{ container_port }}"
+
+- name: Deploy Docker application
+  include_role:
+    name: docker_app
+
+- name: Configure Nginx
+  include_role:
+    name: nginx_config
+
+- name: Setup SSL certificate
+  include_role:
+    name: ssl_cert
+
+- name: Verify application health
+  uri:
+    url: "http://localhost:{{ container_port }}"
+    method: GET
+    timeout: 10
+  register: app_health
+  retries: 3
+  delay: 5
+  ignore_errors: yes
+
+- name: Report app deployment status
+  debug:
+    msg: "{{ app_name }}: {{ 'Success' if app_health.status == 200 else 'Needs attention' }}"

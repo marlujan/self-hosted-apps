@@ -1,3 +1,0 @@
-# Variables used across all Ansible roles
-domain_name: readeck.migacloud.dev
-user_email: marlujan.hj+dev1@gmail.com

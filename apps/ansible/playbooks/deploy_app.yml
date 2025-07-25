@@ -1,0 +1,56 @@
+---
+- name: Deploy Single Docker Application
+  hosts: docker_apps
+  become: yes
+  vars_files:
+    - "../apps_config/{{ app_name }}.yml"
+  
+  pre_tasks:
+    - name: Validate app_name parameter
+      assert:
+        that:
+          - app_name is defined
+          - app_name != ""
+        fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
+
+    - name: Check if app config exists
+      stat:
+        path: "../apps_config/{{ app_name }}.yml"
+      delegate_to: localhost
+      register: app_config_stat
+
+    - name: Fail if app config doesn't exist
+      fail:
+        msg: "App configuration file '../apps_config/{{ app_name }}.yml' does not exist"
+      when: not app_config_stat.stat.exists
+
+    - name: Display deployment info
+      debug:
+        msg:
+          - "Deploying application: {{ app_name }}"
+          - "Domain: {{ domain_name }}"
+          - "Port: {{ container_port }}"
+          - "Image: {{ docker_image }}"
+
+  roles:
+    - docker_app
+    - nginx_config
+    - ssl_cert
+
+  post_tasks:
+    - name: Verify container is running
+      uri:
+        url: "http://localhost:{{ container_port }}"
+        method: GET
+        timeout: 10
+      register: health_check
+      retries: 3
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display deployment status
+      debug:
+        msg: 
+          - "✅ {{ app_name }} deployment completed successfully!"
+          - "🌐 Available at: https://{{ domain_name }}"
+          - "🐳 Container health: {{ 'Healthy' if health_check.status == 200 else 'Check required' }}"
