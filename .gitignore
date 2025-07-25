@@ -137,3 +137,76 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+#----- For Ansible projects (pending of cleaning):
+
+# ## General Exclusions ##
+# Python virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Python cache files
+*.pyc
+__pycache__/
+
+# IDE and editor directories/files
+.vscode/
+.idea/
+*.swp
+*.swo
+.vim/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+
+# ## Ansible Specific Exclusions ##
+# Ansible runtime files
+*.retry
+*.log
+fact_caching/
+facts_cache/
+.ansible_fact_cache/
+
+# Dynamic inventory cache files
+*.cache
+
+
+# ## Secrets & Credentials ##
+# NEVER commit secrets, private keys, vault passwords, or unencrypted credential files.
+# Store the vault password in a secure password manager.
+*vault*pass*
+*.pem
+*.key
+credentials.yml
+secrets.yml
+# Consider ignoring encrypted vault files as well, especially in public repositories.
+# Un-comment the line below if you want to ignore your vault files.
+# *vault*.yml
+
+
+# ## Dependency Management ##
+# Ignore roles and collections installed via ansible-galaxy.
+# Your 'requirements.yml' file SHOULD be committed to the repository.
+# roles/
+# collections/
+
+# If you have custom, project-specific roles inside the 'roles' directory that
+# you WANT to commit, you can add exceptions. For example:
+# !roles/my_custom_app_role/
+
+
+# ## Testing & Development Environments ##
+# Vagrant-related files
+.vagrant/
+
+# Molecule testing framework files
+.molecule/
+
+
+# .bak files
+*.bak
