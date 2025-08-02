@@ -1,0 +1,77 @@
+version: '3.8'
+
+volumes:
+  server-local-data:
+  db-data:
+
+services:
+  server:
+    image: twentycrm/twenty:${TAG:-latest}
+    container_name: twenty-server
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    environment:
+      NODE_PORT: 3000
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER}:${PG_DATABASE_PASSWORD}@${PG_DATABASE_HOST}:${PG_DATABASE_PORT}/default
+      SERVER_URL: ${SERVER_URL}
+      REDIS_URL: ${REDIS_URL}
+      APP_SECRET: ${APP_SECRET}
+      STORAGE_TYPE: ${STORAGE_TYPE}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3000/healthz || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always
+
+  worker:
+    image: twentycrm/twenty:${TAG:-latest}
+    container_name: twenty-worker
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    command: ["yarn", "worker:prod"]
+    environment:
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER}:${PG_DATABASE_PASSWORD}@${PG_DATABASE_HOST}:${PG_DATABASE_PORT}/default
+      SERVER_URL: ${SERVER_URL}
+      REDIS_URL: ${REDIS_URL}
+      APP_SECRET: ${APP_SECRET}
+      STORAGE_TYPE: ${STORAGE_TYPE}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: twenty-db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${PG_DATABASE_USER}
+      POSTGRES_PASSWORD: ${PG_DATABASE_PASSWORD}
+      POSTGRES_DB: default
+    healthcheck:
+      test: pg_isready -U ${PG_DATABASE_USER} -d default
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: twenty-redis
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: always

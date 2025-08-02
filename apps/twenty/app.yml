@@ -1,0 +1,53 @@
+# Application metadata
+app_name: twenty
+domain_name: twenty.migacloud.dev
+user_email: marlujan.hj+dev1@gmail.com
+
+# Service definitions for proxy and health checks
+services:
+  server:                            # Must match docker-compose service name
+    port: 3000                       # Container internal port
+    proxy_port: 8001                 # Unique external port for Nginx proxy
+    health_path: /healthz            # Health check endpoint
+    timeout: 30s                     # Health check timeout
+
+# Nginx reverse proxy configuration
+nginx:
+  client_max_body_size: 50M
+  proxy_timeout: 120s
+  additional_headers:
+    - 'add_header X-App-Name "Twenty CRM" always'
+
+# SSL certificate configuration
+ssl_enabled: true
+
+# Environment variables for .env file generation
+environment:
+  # Docker image tag
+  TAG: latest
+  
+  # Server configuration
+  SERVER_URL: "https://{{ domain_name }}"
+  
+  # Database configuration
+  PG_DATABASE_USER: postgres
+  PG_DATABASE_PASSWORD: "{{ twenty_db_password }}"
+  PG_DATABASE_HOST: db
+  PG_DATABASE_PORT: "5432"
+  
+  # Redis configuration  
+  REDIS_URL: redis://redis:6379
+  
+  # Security
+  APP_SECRET: "{{ twenty_app_secret }}"
+  
+  # Storage configuration
+  STORAGE_TYPE: local
+  
+  # Service ports for docker-compose
+  SERVER_PORT: "{{ services.server.port }}"
+
+# Docker Compose project settings
+compose:
+  project_name: "{{ app_name }}"
+  restart_policy: always
