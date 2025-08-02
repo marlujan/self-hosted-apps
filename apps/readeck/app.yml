@@ -1,0 +1,37 @@
+# Application metadata
+app_name: readeck
+domain_name: readeck.migacloud.dev
+user_email: marlujan.hj+dev1@gmail.com
+
+# Service definitions for proxy and health checks
+services:
+  readeck:                           # Must match docker-compose service name
+    port: 8000                       # Container internal port
+    proxy_port: 8000                 # Unique external port for Nginx proxy
+    health_path: /health             # Health check endpoint
+    timeout: 30s                     # Health check timeout
+
+# Nginx reverse proxy configuration  
+nginx:
+  client_max_body_size: 100M
+  proxy_timeout: 60s
+  additional_headers:
+    - 'add_header X-App-Name "Readeck" always'
+
+# SSL certificate configuration
+ssl_enabled: true
+
+# Environment variables for .env file generation
+environment:
+  # Static values
+  READECK_LOG_LEVEL: debug
+  READECK_SERVER_HOST: 0.0.0.0
+  
+  # Dynamic values using Ansible templating
+  READECK_SERVER_PORT: "{{ services.readeck.port }}"
+  DOMAIN_NAME: "{{ domain_name }}"
+  
+# Docker Compose project settings
+compose:
+  project_name: "{{ app_name }}"
+  restart_policy: unless-stopped

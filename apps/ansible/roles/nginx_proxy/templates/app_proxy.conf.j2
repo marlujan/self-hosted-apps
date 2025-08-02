@@ -1,0 +1,56 @@
+{% for service_name, service_config in app.services.items() %}
+{% if service_config.proxy_port is defined %}
+# {{ app.app_name }} - {{ service_name }} service
+server {
+    listen 80;
+    server_name {{ app.domain_name }};
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+
+{% if app.nginx.additional_headers is defined %}
+    # Custom headers
+{% for header in app.nginx.additional_headers %}
+    {{ header }};
+{% endfor %}
+{% endif %}
+
+    # Client configuration
+    client_max_body_size {{ app.nginx.client_max_body_size | default('1M') }};
+    
+    location / {
+        proxy_pass http://localhost:{{ service_config.proxy_port }};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Timeouts
+        proxy_connect_timeout {{ app.nginx.proxy_timeout | default('60s') }};
+        proxy_send_timeout {{ app.nginx.proxy_timeout | default('60s') }};
+        proxy_read_timeout {{ app.nginx.proxy_timeout | default('60s') }};
+    }
+
+    # Health check endpoint
+{% if service_config.health_path is defined %}
+    location {{ service_config.health_path }} {
+        proxy_pass http://localhost:{{ service_config.proxy_port }}{{ service_config.health_path }};
+        access_log off;
+    }
+{% endif %}
+}
+
+{% if app.ssl_enabled | default(true) %}
+# SSL redirect will be added by Certbot
+{% endif %}
+
+{% endif %}
+{% endfor %}

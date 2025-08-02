@@ -12,13 +12,15 @@ The system consists of two main layers:
 
 1. **Infrastructure Layer** (`infrastructure/`): AWS CloudFormation template that provisions VPC, EC2 instance, security groups, and networking. Ansible roles configure the base system (Docker, Nginx, Certbot).
 
-2. **Application Layer** (`apps/`): Ansible-based deployment system that manages Docker containers, Nginx configurations, and SSL certificates for individual applications.
+2. **Application Layer** (`apps/`): Docker Compose-first deployment system orchestrated by Ansible. Each application is self-contained with its own Docker Compose file and configuration.
 
 ### Key Components
-- **Nginx Reverse Proxy**: Routes traffic based on domain to appropriate Docker containers
+- **Docker Compose**: Native multi-service support using official Docker Compose files
+- **Ansible Orchestration**: Manages deployment lifecycle, environment injection, and system integration
+- **Nginx Reverse Proxy**: Routes traffic based on domain to appropriate Docker services
 - **Let's Encrypt SSL**: Automated certificate provisioning per domain  
-- **Port Management**: Centralized allocation system prevents port conflicts
-- **YAML Configuration**: Declarative app definitions with validation
+- **Self-Contained Apps**: Each app directory contains all deployment artifacts
+- **Environment Injection**: Ansible generates `.env` files from app configurations
 
 ## Common Commands
 
@@ -42,7 +44,7 @@ cd apps
 # Deploy all applications
 ./deploy.sh all
 
-# Update application with latest Docker image
+# Update application with latest Docker images
 ./update.sh <app_name>
 
 # Remove application completely
@@ -64,26 +66,52 @@ ansible-playbook -i inventory/hosts.ini playbooks/status.yml
 
 # Update app
 ansible-playbook -i inventory/hosts.ini playbooks/update_app.yml -e "app_name=readeck"
+
+# Remove app
+ansible-playbook -i inventory/hosts.ini playbooks/remove_app.yml -e "app_name=readeck"
 ```
 
 ## Adding New Applications
 
-1. **Create configuration file**:
+1. **Create application directory**:
    ```bash
-   cd apps/ansible/apps_config
-   cp example-nextapp.yml myapp.yml
+   cd apps
+   mkdir myapp
    ```
 
-2. **Configure application** in `myapp.yml`:
-   - Set unique `app_name`, `domain_name`, `docker_image`
-   - Choose unique `container_port` (8000-8999 range)
-   - Configure environment variables, volumes, health checks
-
-3. **Update port allocation** in `apps/ansible/inventory/group_vars/docker_apps.yml`:
+2. **Create Docker Compose file** in `myapp/docker-compose.yml`:
    ```yaml
-   allocated_ports:
-     readeck: 8000
-     myapp: 8001  # Add your app with unique port
+   version: '3.8'
+   services:
+     myapp:
+       image: myapp/myapp:latest
+       container_name: myapp
+       restart: unless-stopped
+       ports:
+         - "${MYAPP_PORT}:3000"
+       environment:
+         - NODE_ENV=${NODE_ENV}
+         - DATABASE_URL=${DATABASE_URL}
+   ```
+
+3. **Create app configuration** in `myapp/app.yml`:
+   ```yaml
+   app_name: myapp
+   domain_name: myapp.example.com
+   user_email: admin@example.com
+   
+   services:
+     myapp:
+       port: 3000
+       proxy_port: 8001  # Choose unique port (8000-8999)
+       health_path: /health
+   
+   ssl_enabled: true
+   
+   environment:
+     NODE_ENV: production
+     DATABASE_URL: postgresql://localhost/myapp
+     MYAPP_PORT: "{{ services.myapp.port }}"
    ```
 
 4. **Deploy**:
@@ -94,25 +122,25 @@ ansible-playbook -i inventory/hosts.ini playbooks/update_app.yml -e "app_name=re
 
 ## Application Configuration Schema
 
-Applications are defined in YAML files in `apps/ansible/apps_config/`:
+Applications are defined in `app.yml` files within each app directory:
 
 ### Required Fields
 - `app_name`: Unique identifier for the application
 - `domain_name`: FQDN that will route to this application
-- `container_port`: Unique port number (must be added to `docker_apps.yml`)
-- `docker_image`: Docker image reference with tag
-- `app_directory`: Directory path on the server
+- `services`: Dictionary mapping Docker Compose service names to configuration
+
+### Service Configuration
+- `port`: Internal container port
+- `proxy_port`: External port for Nginx proxy (must be unique, 8000-8999 range)
+- `health_path`: Health check endpoint path (optional)
+- `timeout`: Health check timeout (optional)
 
 ### Optional Fields
 - `user_email`: Email for Let's Encrypt SSL certificates
-- `container_name`: Docker container name (defaults to app_name)
-- `restart_policy`: Docker restart policy (default: unless-stopped)
-- `environment_vars`: Array of environment variable strings
-- `volumes`: Array of Docker volume mount strings
-- `healthcheck`: Container health check configuration
-- `nginx_config`: Nginx-specific settings (body size, timeouts, headers)
+- `nginx`: Nginx-specific settings (body size, timeouts, headers)
 - `ssl_enabled`: Enable/disable SSL certificate (default: true)
-- `auto_start`: Start container on deployment (default: true)
+- `environment`: Dictionary of environment variables for `.env` file generation
+- `compose`: Docker Compose project settings
 
 ## Prerequisites
 
@@ -130,7 +158,7 @@ Before deployment, update `infrastructure/deploy.sh` with your settings:
 
 ## Port Management
 
-Port conflicts are prevented through centralized tracking in `apps/ansible/inventory/group_vars/docker_apps.yml`. Always use unique ports in the 8000-8999 range and update this file when adding new applications.
+Port conflicts are prevented through automatic validation during deployment. Each service's `proxy_port` must be unique across all applications. Use ports in the 8000-8999 range for external access.
 
 ## Troubleshooting
 
@@ -141,10 +169,11 @@ Port conflicts are prevented through centralized tracking in `apps/ansible/inven
 
 ### Application Issues
 - Verify DNS A records point to the correct IP
-- Check port uniqueness in `docker_apps.yml`
+- Check port uniqueness across all `app.yml` files
 - Validate YAML configuration syntax
-- Check Docker image availability
+- Check Docker image availability in Docker Compose file
 - Verify container health check endpoints work
+- Check `.env` file generation in app directory on server
 
 ### Common Commands for Debugging
 ```bash
@@ -154,13 +183,18 @@ ssh -i ~/.ssh/your-key.pem ec2-user@<SERVER_IP>
 # Check containers
 docker ps
 docker logs <container_name>
+cd /home/ec2-user/apps/<app_name> && docker-compose logs
 
 # Check Nginx
 sudo nginx -t
 sudo systemctl status nginx
+ls -la /etc/nginx/sites-enabled/
 
 # Check SSL certificates
 sudo certbot certificates
+
+# Check app environment files
+cat /home/ec2-user/apps/<app_name>/.env
 ```
 
 ## Security Notes

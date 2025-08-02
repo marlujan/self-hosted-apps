@@ -29,12 +29,17 @@ echo "[docker_apps]" > inventory/hosts.ini
 echo "$PUBLIC_IP" >> inventory/hosts.ini
 
 # Count available applications
-APP_COUNT=$(find apps_config -name "*.yml" -not -name "example-*" | wc -l)
+APP_COUNT=0
+for app_dir in ../*/; do
+    if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
+        APP_COUNT=$((APP_COUNT + 1))
+    fi
+done
 
 if [ "$APP_COUNT" -eq 0 ]; then
     echo ""
     echo "ℹ️  No applications configured yet."
-    echo "Create application configurations in apps_config/ directory."
+    echo "Create application directories with app.yml files."
     exit 0
 fi
 

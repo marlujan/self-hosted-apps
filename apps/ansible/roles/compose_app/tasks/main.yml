@@ -1,0 +1,51 @@
+---
+- name: Create application directory
+  file:
+    path: "{{ app_directory }}"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+
+- name: Validate port allocations
+  include_tasks: validate_ports.yml
+
+- name: Generate environment file
+  template:
+    src: env.j2
+    dest: "{{ app_directory }}/.env"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0600'
+  notify: restart compose services
+
+- name: Copy Docker Compose file
+  copy:
+    src: "{{ app_compose_path }}"
+    dest: "{{ app_directory }}/docker-compose.yml"
+    owner: ec2-user
+    group: ec2-user
+    mode: '0644'
+  notify: restart compose services
+
+- name: Pull latest images
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    pull: yes
+    state: present
+  become_user: ec2-user
+  register: compose_pull
+
+- name: Deploy with Docker Compose
+  community.docker.docker_compose:
+    project_src: "{{ app_directory }}"
+    state: present
+  become_user: ec2-user
+  register: compose_deploy
+
+- name: Display compose deployment result
+  debug:
+    msg:
+      - "Compose pull result: {{ 'Success' if compose_pull.changed else 'No changes' }}"
+      - "Compose deploy result: {{ 'Success' if compose_deploy.changed else 'Already running' }}"
+      - "Services: {{ compose_deploy.services.keys() | list if compose_deploy.services is defined else 'None' }}"

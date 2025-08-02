@@ -1,28 +1,51 @@
 ---
-- name: Check Application Status
+- name: Check Docker Compose Applications Status
   hosts: docker_apps
   become: yes
   gather_facts: no
-  
+
   tasks:
-    - name: Find all app configuration files
+    - name: Find all application directories
       find:
-        paths: "../apps_config"
-        patterns: "*.yml"
-        excludes: "example-*.yml"
+        paths: "/home/ec2-user/apps"
+        file_type: directory
+        depth: 1
+      register: app_directories
+
+    - name: Get app configurations
+      set_fact:
+        app_configs: "{{ app_configs | default([]) + [{'name': item.path | basename, 'path': item.path}] }}"
+      loop: "{{ app_directories.files }}"
+
+    - name: Check Docker Compose status for each app
+      community.docker.docker_compose:
+        project_src: "{{ item.path }}"
+        state: present
+      become_user: ec2-user
+      register: compose_status
+      loop: "{{ app_configs }}"
+      ignore_errors: yes
+
+    - name: Load app configurations for detailed info
+      include_vars:
+        file: "../{{ item.name }}/app.yml"
+        name: "app_config_{{ item.name }}"
+      loop: "{{ app_configs }}"
       delegate_to: localhost
-      register: app_configs
+      ignore_errors: yes
 
-    - name: Check status of each application
-      include_tasks: check_single_app.yml
-      vars:
-        app_name: "{{ item.path | basename | regex_replace('\\.yml$', '') }}"
-        app_config_file: "{{ item.path }}"
-      loop: "{{ app_configs.files }}"
-
-    - name: Display summary
+    - name: Display application status summary
       debug:
         msg:
-          - "📊 Application Status Summary"
-          - "Total applications: {{ app_configs.files | length }}"
-          - "Check individual results above"
+          - "📊 Docker Compose Applications Status"
+          - "====================================="
+          - "{% for result in compose_status.results %}"
+          - "App: {{ result.item.name }}"
+          - "Status: {{ 'Running ✅' if not result.failed else 'Failed ❌' }}"
+          - "Services: {{ result.services.keys() | list | join(', ') if result.services is defined else 'None' }}"
+          - "Path: {{ result.item.path }}"
+          - "Domain: {{ hostvars[inventory_hostname]['app_config_' + result.item.name].domain_name if hostvars[inventory_hostname]['app_config_' + result.item.name] is defined else 'Unknown' }}"
+          - "-------------------------------------"
+          - "{% endfor %}"
+          - ""
+          - "Total applications found: {{ app_configs | length }}"

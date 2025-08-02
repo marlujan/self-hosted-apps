@@ -71,24 +71,26 @@ cd ansible
 echo "[docker_apps]" > inventory/hosts.ini
 echo "$PUBLIC_IP" >> inventory/hosts.ini
 
-# Check if app config exists
-if [ ! -f "apps_config/${APP_NAME}.yml" ]; then
-    echo "❌ Error: Application configuration 'apps_config/${APP_NAME}.yml' not found."
+# Check if app directory and config exists
+if [ ! -d "../$APP_NAME" ] || [ ! -f "../$APP_NAME/app.yml" ]; then
+    echo "❌ Error: Application directory '$APP_NAME' or 'app.yml' not found."
     echo ""
     echo "Available applications:"
-    find apps_config -name "*.yml" -not -name "example-*" -exec basename {} .yml \; | sort
+    for app_dir in ../*/; do
+        if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
+            echo "  - $(basename "$app_dir")"
+        fi
+    done
     exit 1
 fi
 
 # Load and display app info
-APP_DOMAIN=$(grep "^domain_name:" "apps_config/${APP_NAME}.yml" | awk '{print $2}')
-APP_IMAGE=$(grep "^docker_image:" "apps_config/${APP_NAME}.yml" | awk '{print $2}' | tr -d '"')
+APP_DOMAIN=$(grep "^domain_name:" "../$APP_NAME/app.yml" | awk '{print $2}')
 
 echo "🔄 Updating application: $APP_NAME"
 echo "📋 Application details:"
 echo "  Name: $APP_NAME"
 echo "  Domain: $APP_DOMAIN"
-echo "  Docker Image: $APP_IMAGE"
 
 if [ "$FORCE" = false ]; then
     echo ""

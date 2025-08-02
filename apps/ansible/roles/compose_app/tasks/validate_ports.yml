@@ -1,0 +1,64 @@
+---
+- name: Initialize port tracking
+  set_fact:
+    all_allocated_ports: []
+    current_app_ports: []
+
+- name: Find all app configurations for port validation
+  find:
+    paths: ["../"]
+    patterns: "*/app.yml"
+    recurse: yes
+  delegate_to: localhost
+  register: all_app_configs
+
+- name: Process each other app configuration and extract ports
+  block:
+    - name: Load app configuration
+      include_vars:
+        file: "{{ app_config_file.path }}"
+        name: "other_app_config"
+      
+    - name: Extract ports from this app configuration
+      set_fact:
+        all_allocated_ports: "{{ all_allocated_ports + [service.value.proxy_port] }}"
+      loop: "{{ other_app_config.services | dict2items }}"
+      loop_control:
+        loop_var: service
+      when:
+        - other_app_config.services is defined
+        - service.value.proxy_port is defined
+        - service.value.proxy_port is not none
+        
+  loop: "{{ all_app_configs.files }}"
+  loop_control:
+    loop_var: app_config_file
+  delegate_to: localhost
+  when: app_config_file.path != app_config_path
+
+- name: Build current app port list
+  set_fact:
+    current_app_ports: "{{ current_app_ports + [item.value.proxy_port] }}"
+  loop: "{{ app.services | dict2items }}"
+  when: 
+    - item.value.proxy_port is defined
+    - item.value.proxy_port is not none
+
+- name: Check for port conflicts with other apps
+  fail:
+    msg: "Port conflict detected: {{ item }} is already allocated by another application"
+  loop: "{{ current_app_ports }}"
+  when: item in all_allocated_ports
+
+- name: Check for internal port conflicts within current app
+  fail:
+    msg: "Internal port conflict detected: {{ item }} is used multiple times within {{ app.app_name }}"
+  loop: "{{ current_app_ports }}"
+  when: current_app_ports | select('equalto', item) | list | length > 1
+
+- name: Display port allocations
+  debug:
+    msg:
+      - "App: {{ app.app_name }}"
+      - "Current app ports: {{ current_app_ports | unique | sort }}"
+      - "Other allocated ports: {{ all_allocated_ports | unique | sort }}"

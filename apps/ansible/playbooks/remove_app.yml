@@ -1,10 +1,11 @@
 ---
-- name: Remove Docker Application
+- name: Remove Docker Compose Application
   hosts: docker_apps
   become: yes
-  vars_files:
-    - "../apps_config/{{ app_name }}.yml"
-  
+  vars:
+    app_config_path: "../{{ app_name }}/app.yml"
+    app_directory: "/home/ec2-user/apps/{{ app_name }}"
+
   pre_tasks:
     - name: Validate app_name parameter
       assert:
@@ -12,6 +13,13 @@
           - app_name is defined
           - app_name != ""
         fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
+
+    - name: Load app configuration
+      include_vars:
+        file: "{{ app_config_path }}"
+        name: app_config
+      delegate_to: localhost
+      ignore_errors: yes
 
     - name: Confirm removal
       pause:
@@ -27,11 +35,10 @@
       debug:
         msg:
           - "Removing application: {{ app_name }}"
-          - "Domain: {{ domain_name }}"
-          - "Directory: {{ app_directory }}"
+          - "Domain: {{ app_config.domain_name | default('Unknown') }}"
 
   tasks:
-    - name: Stop and remove Docker containers
+    - name: Stop and remove Docker Compose services
       community.docker.docker_compose:
         project_src: "{{ app_directory }}"
         state: absent
@@ -39,37 +46,31 @@
       become_user: ec2-user
       ignore_errors: yes
 
-    - name: Remove Docker images
-      community.docker.docker_image:
-        name: "{{ docker_image }}"
-        state: absent
-      become_user: ec2-user
-      ignore_errors: yes
-
-    - name: Remove app directory
+    - name: Remove application directory
       file:
         path: "{{ app_directory }}"
         state: absent
 
     - name: Remove Nginx configuration
       file:
-        path: "/etc/nginx/conf.d/{{ app_name }}.conf"
+        path: "/etc/nginx/sites-enabled/{{ app_name }}.conf"
         state: absent
       notify: reload nginx
 
+    - name: Remove Nginx available configuration
+      file:
+        path: "/etc/nginx/sites-available/{{ app_name }}.conf"
+        state: absent
+
     - name: Remove SSL certificate
-      command: certbot delete --cert-name {{ domain_name }} --non-interactive
+      command: certbot delete --cert-name {{ app_config.domain_name | default(app_name) }} --non-interactive
       register: cert_removal
       failed_when: cert_removal.rc != 0 and "No certificate found" not in cert_removal.stderr
-      when: ssl_enabled | default(true)
-
-    - name: Test and reload Nginx
-      command: nginx -t
-      notify: reload nginx
+      when: app_config.ssl_enabled | default(true)
 
   handlers:
     - name: reload nginx
-      systemctl:
+      systemd:
         name: nginx
         state: reloaded
 
@@ -77,6 +78,5 @@
     - name: Display removal status
       debug:
         msg: 
-          - "✅ {{ app_name }} has been completely removed!"
-          - "🌐 Domain {{ domain_name }} is no longer served"
-          - "ℹ️  You may want to update your DNS records"
+          - "✅ {{ app_name }} removal completed!"
+          - "🗑️ All services, volumes, and configurations removed"

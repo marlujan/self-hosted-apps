@@ -1,0 +1,25 @@
+---
+- name: Generate Nginx configuration for app
+  template:
+    src: app_proxy.conf.j2
+    dest: "/etc/nginx/sites-available/{{ app.app_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload nginx
+
+- name: Enable Nginx site
+  file:
+    src: "/etc/nginx/sites-available/{{ app.app_name }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ app.app_name }}.conf"
+    state: link
+  notify: reload nginx
+
+- name: Test Nginx configuration
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+
+- name: Display Nginx test result
+  debug:
+    msg: "Nginx configuration test: {{ 'PASSED ✅' if nginx_test.rc == 0 else 'FAILED ❌' }}"

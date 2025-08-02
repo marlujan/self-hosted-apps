@@ -88,7 +88,11 @@ if [ "$APP_NAME" = "all" ]; then
     
     # List available apps
     echo "📋 Available applications:"
-    find apps_config -name "*.yml" -not -name "example-*" -exec basename {} .yml \; | sort
+    for app_dir in ../*/; do
+        if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
+            echo "  - $(basename "$app_dir")"
+        fi
+    done
     
     if [ "$FORCE" = false ]; then
         echo ""
@@ -100,14 +104,25 @@ if [ "$APP_NAME" = "all" ]; then
         fi
     fi
     
-    ansible-playbook -i inventory/hosts.ini playbooks/deploy_all.yml
+    # Deploy each app individually
+    for app_dir in ../*/; do
+        if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
+            app_name=$(basename "$app_dir")
+            echo "📦 Deploying: $app_name"
+            ansible-playbook -i inventory/hosts.ini playbooks/deploy_app.yml -e "app_name=$app_name"
+        fi
+    done
 else
-    # Check if app config exists
-    if [ ! -f "apps_config/${APP_NAME}.yml" ]; then
-        echo "❌ Error: Application configuration 'apps_config/${APP_NAME}.yml' not found."
+    # Check if app directory and config exists
+    if [ ! -d "../$APP_NAME" ] || [ ! -f "../$APP_NAME/app.yml" ]; then
+        echo "❌ Error: Application directory '$APP_NAME' or 'app.yml' not found."
         echo ""
         echo "Available applications:"
-        find apps_config -name "*.yml" -not -name "example-*" -exec basename {} .yml \; | sort
+        for app_dir in ../*/; do
+            if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
+                echo "  - $(basename "$app_dir")"
+            fi
+        done
         exit 1
     fi
     
@@ -115,13 +130,11 @@ else
     
     if [ "$FORCE" = false ]; then
         # Load and display app info
-        APP_DOMAIN=$(grep "^domain_name:" "apps_config/${APP_NAME}.yml" | awk '{print $2}')
-        APP_PORT=$(grep "^container_port:" "apps_config/${APP_NAME}.yml" | awk '{print $2}')
+        APP_DOMAIN=$(grep "^domain_name:" "../$APP_NAME/app.yml" | awk '{print $2}')
         
         echo "📋 Application details:"
         echo "  Name: $APP_NAME"
         echo "  Domain: $APP_DOMAIN"
-        echo "  Port: $APP_PORT"
         echo "  Infrastructure IP: $PUBLIC_IP"
         echo ""
         echo "⚠️  Make sure your domain's A record points to $PUBLIC_IP"

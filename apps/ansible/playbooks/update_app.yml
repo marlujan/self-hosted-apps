@@ -1,10 +1,12 @@
 ---
-- name: Update Single Docker Application
+- name: Update Docker Compose Application
   hosts: docker_apps
   become: yes
-  vars_files:
-    - "../apps_config/{{ app_name }}.yml"
-  
+  vars:
+    app_config_path: "../{{ app_name }}/app.yml"
+    app_compose_path: "../{{ app_name }}/docker-compose.yml"
+    app_directory: "/home/ec2-user/apps/{{ app_name }}"
+
   pre_tasks:
     - name: Validate app_name parameter
       assert:
@@ -13,55 +15,53 @@
           - app_name != ""
         fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
 
+    - name: Load app configuration
+      include_vars:
+        file: "{{ app_config_path }}"
+        name: app_config
+      delegate_to: localhost
+
     - name: Display update info
       debug:
         msg:
-          - "Updating application: {{ app_name }}"
-          - "Current image: {{ docker_image }}"
+          - "Updating application: {{ app_config.app_name }}"
+          - "Domain: {{ app_config.domain_name }}"
+          - "Services: {{ app_config.services.keys() | list | join(', ') }}"
 
   tasks:
-    - name: Pull latest Docker image
-      community.docker.docker_image:
-        name: "{{ docker_image }}"
-        source: pull
-        force_source: yes
+    - name: Pull latest Docker images
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        pull: yes
+        state: present
       become_user: ec2-user
+      register: compose_pull
 
-    - name: Update docker-compose configuration
-      template:
-        src: "../roles/docker_app/templates/docker-compose.yml.j2"
-        dest: "{{ app_directory }}/docker-compose.yml"
-        owner: ec2-user
-        group: ec2-user
-        mode: '0644'
-
-    - name: Recreate container with latest image
+    - name: Recreate containers with latest images
       community.docker.docker_compose:
         project_src: "{{ app_directory }}"
         state: present
-        pull: yes
         recreate: always
       become_user: ec2-user
+      register: compose_recreate
 
-    - name: Wait for container to be ready
-      wait_for:
-        port: "{{ container_port }}"
-        host: localhost
-        delay: 5
-        timeout: 60
+    - name: Wait for services to be ready
+      pause:
+        seconds: 10
 
-    - name: Verify application health after update
-      uri:
-        url: "http://localhost:{{ container_port }}"
-        method: GET
-        timeout: 10
-      register: health_check
-      retries: 3
-      delay: 5
+  post_tasks:
+    - name: Verify services health after update
+      include_tasks: ../tasks/health_check.yml
+      vars:
+        service_name: "{{ item.key }}"
+        service_config: "{{ item.value }}"
+        app: "{{ app_config }}"
+      loop: "{{ app_config.services | dict2items }}"
+      when: item.value.proxy_port is defined
 
     - name: Display update status
       debug:
         msg: 
-          - "✅ {{ app_name }} update completed!"
-          - "🌐 Available at: https://{{ domain_name }}"
-          - "🐳 Container health: {{ 'Healthy' if health_check.status == 200 else 'Check required' }}"
+          - "✅ {{ app_config.app_name }} update completed!"
+          - "🔄 Pull result: {{ 'Images updated' if compose_pull.changed else 'Already latest' }}"
+          - "🐳 Recreate result: {{ 'Containers recreated' if compose_recreate.changed else 'No changes needed' }}"

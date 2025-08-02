@@ -1,10 +1,12 @@
 ---
-- name: Deploy Single Docker Application
+- name: Deploy Docker Compose Application
   hosts: docker_apps
   become: yes
-  vars_files:
-    - "../apps_config/{{ app_name }}.yml"
-  
+  vars:
+    app_config_path: "../{{ app_name }}/app.yml"
+    app_compose_path: "../{{ app_name }}/docker-compose.yml"
+    app_directory: "/home/ec2-user/apps/{{ app_name }}"
+
   pre_tasks:
     - name: Validate app_name parameter
       assert:
@@ -13,44 +15,55 @@
           - app_name != ""
         fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
 
-    - name: Check if app config exists
-      stat:
-        path: "../apps_config/{{ app_name }}.yml"
+    - name: Load app configuration
+      include_vars:
+        file: "{{ app_config_path }}"
+        name: app_config
       delegate_to: localhost
-      register: app_config_stat
 
-    - name: Fail if app config doesn't exist
+    - name: Validate Docker Compose file exists
+      stat:
+        path: "{{ app_compose_path }}"
+      delegate_to: localhost
+      register: compose_stat
+
+    - name: Fail if compose file missing
       fail:
-        msg: "App configuration file '../apps_config/{{ app_name }}.yml' does not exist"
-      when: not app_config_stat.stat.exists
+        msg: "docker-compose.yml not found at {{ app_compose_path }}"
+      when: not compose_stat.stat.exists
 
     - name: Display deployment info
       debug:
         msg:
-          - "Deploying application: {{ app_name }}"
-          - "Domain: {{ domain_name }}"
-          - "Port: {{ container_port }}"
-          - "Image: {{ docker_image }}"
+          - "Deploying application: {{ app_config.app_name }}"
+          - "Domain: {{ app_config.domain_name }}"
+          - "Services: {{ app_config.services.keys() | list | join(', ') }}"
 
   roles:
-    - docker_app
-    - nginx_config
-    - ssl_cert
+    - role: compose_app
+      vars:
+        app: "{{ app_config }}"
+    - role: nginx_proxy
+      vars:
+        app: "{{ app_config }}"
+    - role: ssl_cert
+      vars:
+        app: "{{ app_config }}"
+      when: app_config.ssl_enabled | default(true)
 
   post_tasks:
-    - name: Verify container is running
-      uri:
-        url: "http://localhost:{{ container_port }}"
-        method: GET
-        timeout: 10
-      register: health_check
-      retries: 3
-      delay: 5
-      ignore_errors: yes
+    - name: Verify services health
+      include_tasks: ../tasks/health_check.yml
+      vars:
+        service_name: "{{ item.key }}"
+        service_config: "{{ item.value }}"
+        app: "{{ app_config }}"
+      loop: "{{ app_config.services | dict2items }}"
+      when: item.value.proxy_port is defined
 
     - name: Display deployment status
       debug:
         msg: 
-          - "✅ {{ app_name }} deployment completed successfully!"
-          - "🌐 Available at: https://{{ domain_name }}"
-          - "🐳 Container health: {{ 'Healthy' if health_check.status == 200 else 'Check required' }}"
+          - "✅ {{ app_config.app_name }} deployment completed successfully!"
+          - "🌐 Available at: https://{{ app_config.domain_name }}"
+          - "🐳 Services deployed: {{ app_config.services.keys() | list | join(', ') }}"

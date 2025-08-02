@@ -1,0 +1,20 @@
+---
+- name: "Health check for {{ service_name }}"
+  uri:
+    url: "http://localhost:{{ service_config.proxy_port }}{{ service_config.health_path | default('/') }}"
+    method: GET
+    timeout: "{{ service_config.timeout | default('10') | regex_replace('s', '') | int }}"
+    status_code: [200, 201, 204]
+  register: health_result
+  retries: 5
+  delay: 3
+  ignore_errors: yes
+  when: service_config.health_path is defined
+
+- name: "Display health status for {{ service_name }}"
+  debug:
+    msg: 
+      - "Service: {{ service_name }}"
+      - "Status: {{ 'Healthy ✅' if health_result.status|default(0) in [200, 201, 204] else 'Unhealthy ❌' }}"
+      - "URL: http://localhost:{{ service_config.proxy_port }}{{ service_config.health_path | default('/') }}"
+  when: service_config.health_path is defined
