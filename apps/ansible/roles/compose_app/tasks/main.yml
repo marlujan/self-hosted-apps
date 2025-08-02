@@ -26,16 +26,6 @@
     group: ec2-user
     mode: '0644'
 
-- name: Validate Docker Compose file exists
-  stat:
-    path: "{{ app_directory }}/docker-compose.yml"
-  register: compose_file
-
-- name: Fail if Docker Compose file missing
-  fail:
-    msg: "Docker Compose file not found: {{ app_directory }}/docker-compose.yml"
-  when: not compose_file.stat.exists
-
 - name: Deploy with Docker Compose (pull latest images)
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
