@@ -1,0 +1,1 @@
+Nginx version being used in AL2023 is 1.28.x. Always ensure the definition of app_proxy.conf.j2 is valid for the Ngnix version.

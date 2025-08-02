@@ -5,12 +5,23 @@ server {
     listen 80;
     server_name {{ app.domain_name }};
 
+    # Logging
+    access_log /var/log/nginx/{{ app.app_name }}_access.log;
+    error_log /var/log/nginx/{{ app.app_name }}_error.log;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
 
 {% if app.nginx.additional_headers is defined %}
     # Custom headers
@@ -26,17 +37,29 @@ server {
         proxy_pass http://localhost:{{ service_config.proxy_port }};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        proxy_set_header X-Forwarded-Server $host;
         proxy_cache_bypass $http_upgrade;
+        
+        # Proxy buffering
+        proxy_buffering off;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
         
         # Timeouts
         proxy_connect_timeout {{ app.nginx.proxy_timeout | default('60s') }};
         proxy_send_timeout {{ app.nginx.proxy_timeout | default('60s') }};
         proxy_read_timeout {{ app.nginx.proxy_timeout | default('60s') }};
+        
+        # Error handling
+        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+        proxy_next_upstream_tries 3;
     }
 
     # Health check endpoint
@@ -49,7 +72,7 @@ server {
 }
 
 {% if app.ssl_enabled | default(true) %}
-# SSL redirect will be added by Certbot
+# SSL configuration and HTTPS server block will be added by Certbot
 {% endif %}
 
 {% endif %}
