@@ -39,7 +39,7 @@
 
   tasks:
     - name: Stop and remove Docker Compose services
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_directory }}"
         state: absent
         remove_volumes: yes

@@ -18,7 +18,7 @@
       loop: "{{ app_directories.files }}"
 
     - name: Check Docker Compose status for each app
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ item.path }}"
         state: present
       become_user: ec2-user

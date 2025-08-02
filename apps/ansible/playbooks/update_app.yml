@@ -30,15 +30,15 @@
 
   tasks:
     - name: Pull latest Docker images
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_directory }}"
-        pull: yes
+        pull: always
         state: present
       become_user: ec2-user
       register: compose_pull
 
     - name: Recreate containers with latest images
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: "{{ app_directory }}"
         state: present
         recreate: always

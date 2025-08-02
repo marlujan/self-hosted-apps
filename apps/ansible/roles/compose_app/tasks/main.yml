@@ -29,15 +29,15 @@
   notify: restart compose services
 
 - name: Pull latest images
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
-    pull: yes
+    pull: always
     state: present
   become_user: ec2-user
   register: compose_pull
 
 - name: Deploy with Docker Compose
-  community.docker.docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
   become_user: ec2-user
