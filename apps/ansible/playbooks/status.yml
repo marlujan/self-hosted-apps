@@ -17,13 +17,19 @@
         app_configs: "{{ app_configs | default([]) + [{'name': item.path | basename, 'path': item.path}] }}"
       loop: "{{ app_directories.files }}"
 
-    - name: Check Docker Compose status for each app
-      community.docker.docker_compose_v2:
-        project_src: "{{ item.path }}"
-        state: present
+    - name: Check if Docker Compose file exists
+      stat:
+        path: "{{ item.path }}/docker-compose.yml"
+      register: compose_file_check
+      loop: "{{ app_configs }}"
+
+    - name: Get container status via docker command
+      shell: |
+        cd "{{ item.path }}" && docker compose ps --format json 2>/dev/null || echo "[]"
       become_user: ec2-user
       register: compose_status
       loop: "{{ app_configs }}"
+      when: compose_file_check.results[ansible_loop.index0].stat.exists
       ignore_errors: yes
 
     - name: Load app configurations for detailed info

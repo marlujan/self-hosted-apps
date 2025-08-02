@@ -29,21 +29,24 @@
           - "Services: {{ app_config.services.keys() | list | join(', ') }}"
 
   tasks:
-    - name: Pull latest Docker images
-      community.docker.docker_compose_v2:
-        project_src: "{{ app_directory }}"
-        pull: always
-        state: present
-      become_user: ec2-user
-      register: compose_pull
+    - name: Validate Docker Compose file exists
+      stat:
+        path: "{{ app_directory }}/docker-compose.yml"
+      register: compose_file
 
-    - name: Recreate containers with latest images
+    - name: Fail if Docker Compose file missing
+      fail:
+        msg: "Docker Compose file not found: {{ app_directory }}/docker-compose.yml"
+      when: not compose_file.stat.exists
+
+    - name: Update application with latest images
       community.docker.docker_compose_v2:
         project_src: "{{ app_directory }}"
         state: present
+        pull: always
         recreate: always
       become_user: ec2-user
-      register: compose_recreate
+      register: compose_update
 
     - name: Wait for services to be ready
       pause:
@@ -63,5 +66,4 @@
       debug:
         msg: 
           - "✅ {{ app_config.app_name }} update completed!"
-          - "🔄 Pull result: {{ 'Images updated' if compose_pull.changed else 'Already latest' }}"
-          - "🐳 Recreate result: {{ 'Containers recreated' if compose_recreate.changed else 'No changes needed' }}"
+          - "🔄 Update result: {{ 'Containers updated' if compose_update.changed else 'No changes needed' }}"

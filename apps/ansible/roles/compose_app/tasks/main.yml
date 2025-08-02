@@ -17,7 +17,6 @@
     owner: ec2-user
     group: ec2-user
     mode: '0600'
-  notify: restart compose services
 
 - name: Copy Docker Compose file
   copy:
@@ -26,26 +25,28 @@
     owner: ec2-user
     group: ec2-user
     mode: '0644'
-  notify: restart compose services
 
-- name: Pull latest images
+- name: Validate Docker Compose file exists
+  stat:
+    path: "{{ app_directory }}/docker-compose.yml"
+  register: compose_file
+
+- name: Fail if Docker Compose file missing
+  fail:
+    msg: "Docker Compose file not found: {{ app_directory }}/docker-compose.yml"
+  when: not compose_file.stat.exists
+
+- name: Deploy with Docker Compose (pull latest images)
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
+    state: present
     pull: always
-    state: present
-  become_user: ec2-user
-  register: compose_pull
-
-- name: Deploy with Docker Compose
-  community.docker.docker_compose_v2:
-    project_src: "{{ app_directory }}"
-    state: present
+    recreate: auto
   become_user: ec2-user
   register: compose_deploy
 
 - name: Display compose deployment result
   debug:
     msg:
-      - "Compose pull result: {{ 'Success' if compose_pull.changed else 'No changes' }}"
       - "Compose deploy result: {{ 'Success' if compose_deploy.changed else 'Already running' }}"
       - "Services: {{ compose_deploy.services.keys() | list if compose_deploy.services is defined else 'None' }}"
