@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-STACK_NAME="docker-apps-stack"
+STACK_NAME="self-hosted-apps"
 REGION="us-east-1"
 
 read -p "Are you sure you want to delete the stack '$STACK_NAME'? This will destroy ALL applications! [y/N] " -n 1 -r

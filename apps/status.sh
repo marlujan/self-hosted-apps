@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-STACK_NAME="docker-apps-stack"
+STACK_NAME="self-hosted-apps"
 REGION="us-east-1"
 
 echo "📊 Checking application status..."

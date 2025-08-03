@@ -9,5 +9,5 @@ docker_compose_version: '3.8'
 default_restart_policy: unless-stopped
 
 # Infrastructure settings
-stack_name: docker-apps-stack
+stack_name: self-hosted-apps
 aws_region: us-east-1

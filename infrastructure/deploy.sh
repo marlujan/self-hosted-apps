@@ -2,11 +2,11 @@
 set -e
 
 # --- Configuration ---
-STACK_NAME="docker-apps-stack"
+STACK_NAME="self-hosted-apps"
 REGION="us-east-1"
-KEY_NAME="docker-apps-1" # CHANGE THIS
-YOUR_IP="189.239.72.207/32"             # CHANGE THIS
-PEM_FILE_PATH="~/.ssh/${KEY_NAME}.pem" # CHANGE THIS
+KEY_NAME="selfHostedApps" # CHANGE THIS
+YOUR_IP="189.168.117.167/32" # CHANGE THIS
+PEM_FILE_PATH="~/.ssh/selfHostedApps.pem"
 
 # --- Step 1: Deploy Infrastructure with CloudFormation ---
 echo "🚀 Starting CloudFormation deployment..."

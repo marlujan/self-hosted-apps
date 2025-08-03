@@ -8,7 +8,9 @@
       "WebFetch(domain:twenty.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(ansible-vault view:*)"
     ],
     "deny": []
   }

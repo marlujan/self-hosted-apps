@@ -31,7 +31,7 @@ environment:
   
   # Database configuration
   PG_DATABASE_USER: postgres
-  PG_DATABASE_PASSWORD: "{{ twenty_db_password }}"
+  PG_DATABASE_PASSWORD: "{{ vault_twenty_db_password }}"
   PG_DATABASE_HOST: db
   PG_DATABASE_PORT: "5432"
   
@@ -39,7 +39,7 @@ environment:
   REDIS_URL: redis://redis:6379
   
   # Security
-  APP_SECRET: "{{ twenty_app_secret }}"
+  APP_SECRET: "{{ vault_twenty_app_secret }}"
   
   # Storage configuration
   STORAGE_TYPE: local
