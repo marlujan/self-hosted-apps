@@ -20,11 +20,13 @@
         file: "{{ app_config_path }}"
         name: app_config
       delegate_to: localhost
+      become: no
 
     - name: Validate Docker Compose file exists
       stat:
         path: "{{ app_compose_path }}"
       delegate_to: localhost
+      become: no
       register: compose_stat
 
     - name: Fail if compose file missing
@@ -53,7 +55,7 @@
 
   post_tasks:
     - name: Verify services health
-      include_tasks: ../tasks/health_check.yml
+      include_tasks: tasks/health_check.yml
       vars:
         service_name: "{{ item.key }}"
         service_config: "{{ item.value }}"

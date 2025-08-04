@@ -115,9 +115,9 @@ fi
 echo "🔥 Proceeding with removal..."
 if [ "$AUTO_CONFIRM" = true ]; then
     # Override the pause task in the playbook
-    ansible-playbook -i inventory/hosts.ini playbooks/remove_app.yml -e "app_name=$APP_NAME" -e "ansible_pause_prompt_timeout=1"
+    ansible-playbook -i inventory/hosts.ini remove_app.yml -e "app_name=$APP_NAME" -e "ansible_pause_prompt_timeout=1"
 else
-    ansible-playbook -i inventory/hosts.ini playbooks/remove_app.yml -e "app_name=$APP_NAME"
+    ansible-playbook -i inventory/hosts.ini remove_app.yml -e "app_name=$APP_NAME"
 fi
 
 echo ""

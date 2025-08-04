@@ -103,7 +103,7 @@ if [ "$FORCE" = false ]; then
 fi
 
 # Run update playbook
-ansible-playbook -i inventory/hosts.ini playbooks/update_app.yml -e "app_name=$APP_NAME"
+ansible-playbook -i inventory/hosts.ini update_app.yml -e "app_name=$APP_NAME"
 
 echo ""
 echo "✅ Update completed successfully!"

@@ -48,7 +48,7 @@ echo "📊 Checking status of $APP_COUNT application(s)..."
 echo ""
 
 # Run status check playbook
-ansible-playbook -i inventory/hosts.ini playbooks/status.yml
+ansible-playbook -i inventory/hosts.ini status.yml
 
 echo ""
 echo "📋 Status check completed!"

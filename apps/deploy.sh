@@ -109,7 +109,7 @@ if [ "$APP_NAME" = "all" ]; then
         if [ -d "$app_dir" ] && [ "$(basename "$app_dir")" != "ansible" ] && [ -f "$app_dir/app.yml" ]; then
             app_name=$(basename "$app_dir")
             echo "📦 Deploying: $app_name"
-            ansible-playbook -i inventory/hosts.ini playbooks/deploy_app.yml -e "app_name=$app_name"
+            ansible-playbook -i inventory/hosts.ini deploy_app.yml -e "app_name=$app_name"
         fi
     done
 else
@@ -147,7 +147,7 @@ else
         fi
     fi
     
-    ansible-playbook -i inventory/hosts.ini playbooks/deploy_app.yml -e "app_name=$APP_NAME"
+    ansible-playbook -i inventory/hosts.ini deploy_app.yml -e "app_name=$APP_NAME"
 fi
 
 echo ""
