@@ -1,12 +1,12 @@
 # Application metadata
 app_name: twenty
-domain_name: twenty.migacloud.dev
+domain_name: &domain twenty.migacloud.dev
 user_email: marlujan.hj+dev1@gmail.com
 
 # Service definitions for proxy and health checks
 services:
   server:                            # Must match docker-compose service name
-    port: 3000                       # Container internal port
+    port: &server_port 3000                       # Container internal port
     proxy_port: 8001                 # Unique external port for Nginx proxy
     health_path: /healthz            # Health check endpoint
     timeout: 30s                     # Health check timeout
@@ -27,7 +27,7 @@ environment:
   TAG: latest
   
   # Server configuration
-  SERVER_URL: "https://{{ domain_name }}"
+  SERVER_URL: 'https://'*domain
   
   # Database configuration
   PG_DATABASE_USER: postgres
@@ -45,9 +45,4 @@ environment:
   STORAGE_TYPE: local
   
   # Service ports for docker-compose
-  SERVER_PORT: "{{ services.server.port }}"
-
-# Docker Compose project settings
-compose:
-  project_name: "{{ app_name }}"
-  restart_policy: always
+  SERVER_PORT: *server_port

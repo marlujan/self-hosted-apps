@@ -131,10 +131,6 @@ ansible-playbook -i inventory/hosts.ini playbooks/remove_app.yml -e "app_name=tw
      NODE_ENV: production
      DATABASE_URL: postgresql://localhost/myapp
      MYAPP_PORT: "{{ services.myapp.port }}"
-   
-   compose:
-     project_name: "{{ app_name }}"
-     restart_policy: unless-stopped
    ```
 
 4. **Create environment template** in `myapp/.env.template`:

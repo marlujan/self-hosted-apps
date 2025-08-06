@@ -10,30 +10,14 @@
     patterns: "*/app.yml"
     recurse: yes
   delegate_to: localhost
+  become: no
   register: all_app_configs
 
 - name: Process each other app configuration and extract ports
-  block:
-    - name: Load app configuration
-      include_vars:
-        file: "{{ app_config_file.path }}"
-        name: "other_app_config"
-      
-    - name: Extract ports from this app configuration
-      set_fact:
-        all_allocated_ports: "{{ all_allocated_ports + [service.value.proxy_port] }}"
-      loop: "{{ other_app_config.services | dict2items }}"
-      loop_control:
-        loop_var: service
-      when:
-        - other_app_config.services is defined
-        - service.value.proxy_port is defined
-        - service.value.proxy_port is not none
-        
+  include_tasks: extract_ports_from_config.yml
   loop: "{{ all_app_configs.files }}"
   loop_control:
     loop_var: app_config_file
-  delegate_to: localhost
   when: app_config_file.path != app_config_path
 
 - name: Build current app port list

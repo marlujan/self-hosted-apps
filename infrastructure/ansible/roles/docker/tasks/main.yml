@@ -17,3 +17,15 @@
     url: "https://github.com/docker/compose/releases/latest/download/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
     dest: /usr/local/bin/docker-compose
     mode: '0755'
+
+- name: Create Docker CLI plugins directory
+  file:
+    path: /usr/local/lib/docker/cli-plugins
+    state: directory
+    mode: '0755'
+
+- name: Install Docker Compose plugin
+  get_url:
+    url: "https://github.com/docker/compose/releases/latest/download/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+    dest: /usr/local/lib/docker/cli-plugins/docker-compose
+    mode: '0755'

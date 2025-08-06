@@ -1,0 +1,18 @@
+---
+- name: Load app configuration
+  include_vars:
+    file: "{{ app_config_file.path }}"
+    name: "other_app_config"
+  delegate_to: localhost
+  become: no
+  
+- name: Extract ports from this app configuration
+  set_fact:
+    all_allocated_ports: "{{ all_allocated_ports + [service.value.proxy_port] }}"
+  loop: "{{ other_app_config.services | dict2items }}"
+  loop_control:
+    loop_var: service
+  when:
+    - other_app_config.services is defined
+    - service.value.proxy_port is defined
+    - service.value.proxy_port is not none
