@@ -15,6 +15,12 @@
           - app_name != ""
         fail_msg: "app_name must be provided. Use: -e app_name=<app_name>"
 
+    - name: Load vault variables
+      include_vars:
+        file: "inventory/group_vars/vault.yml"
+      delegate_to: localhost
+      become: no
+
     - name: Load app configuration
       include_vars:
         file: "{{ app_config_path }}"
