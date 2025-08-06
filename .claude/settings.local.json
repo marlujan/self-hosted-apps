@@ -11,7 +11,8 @@
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(ansible-vault view:*)",
-      "Bash(aws cloudformation describe-stacks:*)"
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

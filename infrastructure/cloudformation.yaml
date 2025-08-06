@@ -75,6 +75,88 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
 
   # ------------------------------------------------------------#
+  #  S3 Storage
+  # ------------------------------------------------------------#
+  TwentyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: migacloud-twenty
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-TwentyBucket'
+        - Key: Application
+          Value: Twenty
+
+  TwentyS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TwentyS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${TwentyS3Bucket}/*'
+
+  # ------------------------------------------------------------#
+  #  IAM Role and Policies
+  # ------------------------------------------------------------#
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-EC2Role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref S3AccessPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EC2Role'
+
+  S3AccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyName: !Sub '${AWS::StackName}-S3Access'
+      Description: 'Allows read, write, and list permissions for migacloud-twenty S3 bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt TwentyS3Bucket.Arn
+              - !Sub '${TwentyS3Bucket.Arn}/*'
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${AWS::StackName}-InstanceProfile'
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # ------------------------------------------------------------#
   #  EC2 Instance and Security
   # ------------------------------------------------------------#
   InstanceSecurityGroup:
@@ -107,6 +189,7 @@ Resources:
       SecurityGroupIds:
         - !Ref InstanceSecurityGroup
       SubnetId: !Ref PublicSubnet
+      IamInstanceProfile: !Ref EC2InstanceProfile
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
@@ -131,3 +214,9 @@ Outputs:
   PublicDNS:
     Description: "The Public DNS name of the EC2 instance"
     Value: !GetAtt AppServerInstance.PublicDnsName
+  S3BucketName:
+    Description: "The name of the S3 bucket for Twenty application storage"
+    Value: !Ref TwentyS3Bucket
+  S3BucketPublicURL:
+    Description: "The public URL for accessing objects in the S3 bucket"
+    Value: !Sub 'https://${TwentyS3Bucket}.s3.${AWS::Region}.amazonaws.com'
