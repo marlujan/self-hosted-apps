@@ -1,17 +1,17 @@
 ---
 - name: Check if SSL is enabled for this app
   debug:
-    msg: "SSL certificate setup {{ 'enabled' if (ssl_enabled | default(ssl_default_enabled)) else 'disabled' }} for {{ domain_name }}"
+    msg: "SSL certificate setup {{ 'enabled' if (app.ssl_enabled | default(ssl_default_enabled)) else 'disabled' }} for {{ app.domain_name }}"
 
 - name: Check if certificate already exists
   stat:
-    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+    path: "/etc/letsencrypt/live/{{ app.domain_name }}/fullchain.pem"
   register: cert_exists
 
 - name: Setup SSL certificate with certbot
   command: >
-    certbot --nginx -d {{ domain_name }} 
-    --non-interactive --agree-tos -m {{ user_email | default(default_user_email) }} --redirect
+    certbot --nginx -d {{ app.domain_name }} 
+    --non-interactive --agree-tos -m {{ app.user_email | default(default_user_email) }} --redirect
   when: 
     - ssl_enabled | default(ssl_default_enabled)
     - not cert_exists.stat.exists
@@ -23,21 +23,9 @@
   when: certbot_result is defined and certbot_result.stdout_lines is defined
 
 - name: Renew existing certificate if needed
-  command: certbot renew --nginx --cert-name {{ domain_name }}
+  command: certbot renew --nginx --cert-name {{ app.domain_name }}
   when: 
     - ssl_enabled | default(ssl_default_enabled)
     - cert_exists.stat.exists
   register: cert_renewal
   failed_when: cert_renewal.rc != 0 and "not yet due for renewal" not in cert_renewal.stdout
-
-- name: Setup certificate auto-renewal cron job
-  cron:
-    name: "certbot-renewal"
-    job: "/usr/bin/certbot renew --quiet"
-    minute: "0"
-    hour: "12"
-    day: "*"
-    month: "*"
-    weekday: "*"
-    user: root
-  when: ssl_enabled | default(ssl_default_enabled)

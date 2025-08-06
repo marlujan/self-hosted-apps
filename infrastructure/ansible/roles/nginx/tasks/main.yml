@@ -3,6 +3,29 @@
     name: nginx
     state: present
 
+- name: Create Nginx sites-available directory
+  file:
+    path: /etc/nginx/sites-available
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create Nginx sites-enabled directory
+  file:
+    path: /etc/nginx/sites-enabled
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure Nginx to include sites-enabled
+  lineinfile:
+    path: /etc/nginx/nginx.conf
+    line: '    include /etc/nginx/sites-enabled/*;'
+    insertafter: '    include /etc/nginx/conf.d/\*.conf;'
+    create: yes
+
 - name: Create apps directory
   file:
     path: "{{ apps_directory }}"
