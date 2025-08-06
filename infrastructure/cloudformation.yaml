@@ -134,7 +134,7 @@ Resources:
   S3AccessPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub '${AWS::StackName}-S3Access'
+      ManagedPolicyName: !Sub '${AWS::StackName}-S3Access'
       Description: 'Allows read, write, and list permissions for migacloud-twenty S3 bucket'
       PolicyDocument:
         Version: '2012-10-17'

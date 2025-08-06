@@ -49,3 +49,6 @@ environment:
 
   # Storage configuration
   STORAGE_TYPE: local
+  STORAGE_S3_REGION: "{{ aws_region }}"
+  STORAGE_S3_NAME: "{{ migacloud-twenty }}"
+  STORAGE_S3_ENDPOINT: "{{  }}"
