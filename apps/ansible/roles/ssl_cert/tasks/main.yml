@@ -14,7 +14,6 @@
     --non-interactive --agree-tos -m {{ app.user_email | default(default_user_email) }} --redirect
   when: 
     - ssl_enabled | default(ssl_default_enabled)
-    - not cert_exists.stat.exists
   register: certbot_result
 
 - name: Display certbot result
