@@ -34,6 +34,7 @@
     recreate: auto
   become_user: ec2-user
   register: compose_deploy
+  ignore_errors: yes
 
 - name: Display compose deployment result
   debug:

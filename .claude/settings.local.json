@@ -12,7 +12,10 @@
       "Bash(grep:*)",
       "Bash(ansible-vault view:*)",
       "Bash(aws cloudformation describe-stacks:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(ansible-vault edit:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(ssh:*)"
     ],
     "deny": []
   }
