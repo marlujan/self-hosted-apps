@@ -91,7 +91,7 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       VersioningConfiguration:
-        Status: Enabled
+        Status: Suspended
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-TwentyBucket'
@@ -109,7 +109,7 @@ Resources:
             Effect: Allow
             Principal: '*'
             Action: s3:GetObject
-            Resource: !Sub '${TwentyS3Bucket}/*'
+            Resource: !Sub '${TwentyS3Bucket.Arn}/*'
 
   # ------------------------------------------------------------#
   #  IAM Role and Policies
@@ -182,7 +182,7 @@ Resources:
   AppServerInstance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro # AWS Free Tier eligible
+      InstanceType: t3.small # AWS Free Tier eligible
       KeyName: !Ref KeyName
       # This uses a public SSM parameter to get the latest Amazon Linux 2023 AMI for the region.
       ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'

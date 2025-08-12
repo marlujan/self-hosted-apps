@@ -15,7 +15,7 @@ aws cloudformation deploy \
   --stack-name $STACK_NAME \
   --region $REGION \
   --parameter-overrides KeyName=$KEY_NAME YourIP=$YOUR_IP \
-  --capabilities CAPABILITY_IAM
+  --capabilities CAPABILITY_NAMED_IAM
 
 echo "✅ CloudFormation stack deployment initiated."
 

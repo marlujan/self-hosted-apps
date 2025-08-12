@@ -36,7 +36,7 @@ environment:
   # Database configuration
   PG_DATABASE_USER: postgres
   PG_DATABASE_PASSWORD: "{{ vault_twenty_db_password }}"
-  PG_DATABASE_HOST: db
+  PG_DATABASE_HOST: "db"
   PG_DATABASE_PORT: "5432"
   
   # Redis configuration  
@@ -48,7 +48,7 @@ environment:
   DISABLE_CRON_JOBS_REGISTRATION: false
 
   # Storage configuration
-  STORAGE_TYPE: local
+  STORAGE_TYPE: "s3"
   STORAGE_S3_REGION: "{{ aws_region }}"
-  STORAGE_S3_NAME: "{{ migacloud-twenty }}"
-  STORAGE_S3_ENDPOINT: "{{  }}"
+  STORAGE_S3_NAME: "migacloud-twenty"
+  STORAGE_S3_ENDPOINT: "https://migacloud-twenty.s3.us-east-1.amazonaws.com"
